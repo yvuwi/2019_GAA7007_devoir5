@@ -1,0 +1,170 @@
+---
+title: "Les séries témporelles et reproductibilité"
+author: "Yvonne Uwituze"
+date: "2019-04-05"
+output: "github_document"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+```
+
+#**Opérations sur les données temporelles**
+
+```{r}
+library(lubridate) # pour opérations sur séries temporelles
+```
+
+##**Importation des données**
+
+```{r}
+data_hawai <- read.csv("hawai.csv")
+```
+
+##**Convertir les decimales en format de date** 
+
+```{r}
+decimal<- data_hawai[,"time"]
+date_decimal(decimal,tz="UTC")
+data_hawai$time <- date_decimal(decimal,tz="UTC")
+```
+
+##**Transfomation de format de date**
+
+```{r}
+data_hawai$time <- as.Date(x=date_decimal(decimal,tz="UTC"), format = "%Y/%m/%d")
+```
+
+##**Inspection des données**
+
+```{r}
+glimpse(data_hawai)
+```
+
+##**Exploration graphique des données**
+
+```{r}
+data_hawai%>%
+ggplot(aes(x=time, y=CO2))+
+  geom_line() # figure pour jeu de données au complet
+```
+
+#**Analyse des séries temporelles**
+
+```{r}
+library("forecast") # pour l'analyse des séries temporelles
+```
+
+##**Création d'une série temporelles du CO2 à partir des données de hawai.csv**
+
+```{r}
+data_hawai_ts <- ts(data_hawai %>% select(-time),
+                    start = c(data_hawai$time[1] %>% year(), 3),
+                    frequency = 12)
+```
+
+###**Structure de la série temporelle**
+
+```{r}
+str(data_hawai_ts)
+```
+
+###**Visualisation de séries temporelles : création des graphiques**
+```{r}
+ autoplot(data_hawai_ts) # figures pour la série temporelle
+```
+
+##**Séparation des données : environ 70% pour l'entrainement**
+
+```{r}
+ data_hawai_ent <- length(data_hawai_ts)*0.7
+ data_hawai_ent
+ 
+ data_hawai$time[368]%>%year()
+data_hawai_ts_ent2 <- window(data_hawai_ts, start= c(1958, 3), end= c(1988, 10))
+ length(data_hawai_ts_ent2)
+ 
+```
+
+##**Séparation des données : environ 30% pour le test**
+
+```{r}
+ data_hawai_ts_test <- window(data_hawai_ts, start= c(1988, 11), end= c(2001, 12))
+ length(data_hawai_ts_test)
+```
+
+#**Modelisation des séries temporelles**
+
+##**Création du modèle ETS sur les données d'entrainement**
+
+```{r}
+  library(forecast)
+ data_hawai_modelETS <- data_hawai_ts_ent2 %>%
+   forecast::ets() 
+ data_hawai_modelETS 
+ 
+ data_hawai_modelETS %>%
+ autoplot()
+ 
+ summary(data_hawai_modelETS)
+ 
+```
+
+##**Prévision de CO2 atmosphèrique**
+
+```{r}
+ data_hawai_pred <- data_hawai_modelETS %>%
+   forecast(12*13) 
+ 
+ data_hawai_modelETS %>%
+   forecast(12*13) %>%
+    autoplot() 
+```
+
+##**Analyse de résidus**
+
+```{r}
+ checkresiduals(data_hawai_modelETS)
+```
+
+##**Analyse d'exactitude**
+
+```{r}
+ accuracy(data_hawai_pred, data_hawai_ts)
+```
+
+#**Commentaires**
+
+On remarque une tendance croissante de la concentration de CO2 ( notre variable numérique) ainsi que des fluctuations saisonières régulières.
+
+Le modèle créé est du type : components of ETS (A,A,A) method, ceci veut dire que le modèle a une tendance additive, saison additive et l'erreur additive. 
+
+Le modèle a un AIC de 1222.469. Pas de valeur phi dans ce modèle ce qui indique que l'adoucissement n'est probablement pas nécessaire.
+
+L'analyse d'exactitude effectuée sur la prévision montre MASE de 0.2032564 ( Trainining set) et de 0.7169323 ( test set), comme ces valeurs sont proches des zéros, on peut dire que le modèle est fiable.
+
+Cependant, l'analyse de résidus effectuée sur le modèle montre un p-value très faible (3.645e-07), il est peu probable que les résidus ont été formés par un bruit blanc. Indiquant qu'il existe une structure dans les données qui n'a pas été capturée par le modèle. Les résidus contiennent l'autocorrelation ce qui devrait être evité. Le test de shapiro montre la non normalité de residus avec son p-value de 6.666e-07 qui est inferieur au seuil de 0.05.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
