@@ -1,2 +1,3 @@
-# 2019_GAA-7007_devoir5
+# devoir_5
+#Séries temporelles et reproductibilité
 
