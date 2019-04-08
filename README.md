@@ -1,3 +1,3 @@
-# devoir_5
+# Devoir_5
 ## Séries temporelles et reproductibilité
 
